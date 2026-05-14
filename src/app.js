@@ -7,6 +7,7 @@ dotenv.config();
 
 const sequelize = require('./config/db');
 require('./models'); // register models and associations
+const seed      = require('./seed');
 
 const app = express();
 app.use(express.json());
@@ -24,7 +25,8 @@ app.use('/api/orders', require('./routes/orders'));
 
 const PORT = process.env.PORT || 3000;
 
-sequelize.sync({ alter: true }).then(() => {
+sequelize.sync().then(async () => {
+  await seed();
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`Swagger UI: http://localhost:${PORT}/api-docs`);
