@@ -20,7 +20,7 @@ A complete RESTful API for a small e-commerce platform built with **Node.js**, *
   - [Orders](#orders)
 - [Swagger UI](#swagger-ui)
 - [Postman Collection](#postman-collection)
-- [Admin Account](#admin-account)
+- [Default Seed Data](#default-seed-data)
 - [Notes](#notes)
 
 ---
@@ -35,6 +35,7 @@ A complete RESTful API for a small e-commerce platform built with **Node.js**, *
 - Admin guards (last admin cannot be deleted)
 - Interactive API docs via Swagger UI
 - Postman collection for quick testing
+- Automatic database seeding on first start (default admin + 15 products)
 
 ---
 
@@ -78,6 +79,7 @@ ecommerce-api/
 │   │   ├── items.js
 │   │   ├── cart.js
 │   │   └── orders.js
+│   ├── seed.js                   # Default seed data (admin + items)
 │   └── app.js
 ├── .env                          # Environment variables (not committed)
 ├── .env.example                  # Example environment variables
@@ -133,7 +135,21 @@ npm run dev    # development (auto-restarts with nodemon)
 npm start      # production
 ```
 
-The database file and all tables are created automatically on first start.
+On first start the server will automatically:
+1. Create the SQLite database file at `data/ecommerce.db`
+2. Create all tables
+3. Seed the default admin user and 15 product items
+
+Expected output:
+
+```
+[seed] Admin created (admin@example.com)
+[seed] 15 items created
+Server running on port 3000
+Swagger UI: http://localhost:3000/api-docs
+```
+
+On subsequent starts the seed is skipped silently — it only inserts data when none exists.
 
 ---
 
@@ -160,12 +176,16 @@ npm run dev
 npm start
 ```
 
-Output on successful start:
+Output on first start:
 
 ```
+[seed] Admin created (admin@example.com)
+[seed] 15 items created
 Server running on port 3000
 Swagger UI: http://localhost:3000/api-docs
 ```
+
+On subsequent starts the seed is skipped — it only inserts data when none exists.
 
 ---
 
@@ -343,31 +363,48 @@ The collection uses **collection variables** that are automatically populated by
 
 ---
 
-## Admin Account
+## Default Seed Data
 
-Create an admin account by running the following script once:
+The application seeds initial data automatically on first start via `src/seed.js`.
+
+### Default Admin
+
+| Field | Value |
+|---|---|
+| Name | `Admin` |
+| Email | `admin@example.com` |
+| Password | `admin123` |
+| Role | `admin` |
+
+> Change the default password after first login in a production environment.
+
+### Default Items (15 products)
+
+| Category | Items |
+|---|---|
+| Electronics | Wireless Headphones, Mechanical Keyboard, USB-C Hub, Webcam 1080p, Portable Charger 20000mAh |
+| Accessories | Leather Wallet, Backpack 30L, Sunglasses |
+| Sports | Yoga Mat, Resistance Bands Set |
+| Kitchen | Stainless Water Bottle, Ceramic Coffee Mug |
+| Home Office | Desk Lamp |
+| Footwear | Running Shoes |
+| Stationery | Notebook A5 |
+
+### Seeding rules
+
+- The admin is only created if no user with `admin@example.com` exists.
+- Items are only created if the items table is empty.
+- The seed is **idempotent** — safe to run multiple times without duplicating data.
+
+### Manual re-seed
 
 ```bash
-node -e "
-require('dotenv').config();
-require('./src/models');
-const { User } = require('./src/models');
-const sequelize = require('./src/config/db');
-
-sequelize.sync().then(async () => {
-  await User.create({
-    name: 'Admin',
-    email: 'admin@example.com',
-    password: 'admin123',
-    role: 'admin'
-  });
-  console.log('Admin created');
-  await sequelize.close();
-});
-"
+npm run seed
 ```
 
-> The API enforces that **at least one admin account must exist at all times**. Attempting to delete the last admin returns a `400` error.
+### Admin protection
+
+The API enforces that **at least one admin account must exist at all times**. Attempting to delete the last admin returns a `400` error.
 
 ---
 
