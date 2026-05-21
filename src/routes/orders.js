@@ -25,21 +25,32 @@ const isAdmin = (req, res, next) =>
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             properties:
- *               paymentMethod:   { type: string, enum: [card, paypal, cod], default: card }
- *               shippingAddress:
+ *             oneOf:
+ *               - title: Card or PayPal (address optional)
  *                 type: object
  *                 properties:
- *                   street:  { type: string }
- *                   city:    { type: string }
- *                   zip:     { type: string }
- *                   country: { type: string }
+ *                   paymentMethod:
+ *                     type: string
+ *                     enum: [card, paypal]
+ *                     default: card
+ *                   shippingAddress:
+ *                     $ref: '#/components/schemas/ShippingAddress'
+ *               - title: Cash on Delivery (address required)
+ *                 type: object
+ *                 required: [paymentMethod, shippingAddress]
+ *                 properties:
+ *                   paymentMethod:
+ *                     type: string
+ *                     enum: [cod]
+ *                   shippingAddress:
+ *                     allOf:
+ *                       - $ref: '#/components/schemas/ShippingAddress'
+ *                       - required: [street, city, zip, country]
  *     responses:
  *       201:
  *         description: Order created
  *       400:
- *         description: Cart is empty or insufficient stock
+ *         description: Cart is empty, insufficient stock, or missing shipping address for COD
  */
 router.post('/', auth, async (req, res) => {
   try {
@@ -50,6 +61,17 @@ router.post('/', auth, async (req, res) => {
     });
     if (!cart || cart.CartItems.length === 0)
       return res.status(400).json({ message: 'Cart is empty' });
+
+    if (!['card', 'paypal', 'cod'].includes(paymentMethod))
+      return res.status(400).json({ message: 'paymentMethod must be one of: card, paypal, cod' });
+
+    if (paymentMethod === 'cod') {
+      const { street, city, zip, country } = shippingAddress;
+      if (!street || !city || !zip || !country)
+        return res.status(400).json({
+          message: 'shippingAddress (street, city, zip, country) is required for cash-on-delivery orders',
+        });
+    }
 
     let total = 0;
     const orderItemsData = [];
@@ -83,7 +105,8 @@ router.post('/', auth, async (req, res) => {
     const result = await Order.findByPk(order.id, { include: [OrderItem] });
     res.status(201).json(result);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error('POST /api/orders error:', err);
+    res.status(500).json({ message: 'Internal server error' });
   }
 });
 
@@ -109,7 +132,8 @@ router.get('/', auth, async (req, res) => {
     });
     res.json(orders);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error('GET /api/orders error:', err);
+    res.status(500).json({ message: 'Internal server error' });
   }
 });
 
@@ -144,7 +168,8 @@ router.get('/:id', auth, async (req, res) => {
       return res.status(403).json({ message: 'Forbidden' });
     res.json(order);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error('GET /api/orders/:id error:', err);
+    res.status(500).json({ message: 'Internal server error' });
   }
 });
 
@@ -201,7 +226,8 @@ router.post('/:id/pay', auth, async (req, res) => {
 
     res.json({ message: 'Payment successful', order });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error('POST /api/orders/:id/pay error:', err);
+    res.status(500).json({ message: 'Internal server error' });
   }
 });
 
@@ -240,7 +266,8 @@ router.put('/:id/status', auth, isAdmin, async (req, res) => {
     await order.save();
     res.json(order);
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    console.error('PUT /api/orders/:id/status error:', err);
+    res.status(500).json({ message: 'Internal server error' });
   }
 });
 
@@ -276,7 +303,8 @@ router.delete('/:id', auth, async (req, res) => {
     await order.destroy();
     res.json({ message: 'Order cancelled' });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error('DELETE /api/orders/:id error:', err);
+    res.status(500).json({ message: 'Internal server error' });
   }
 });
 
