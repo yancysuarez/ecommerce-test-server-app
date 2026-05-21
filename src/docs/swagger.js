@@ -65,15 +65,16 @@ const options = {
                 paidAt:        { type: 'string', format: 'date-time' },
               },
             },
-            shippingAddress: {
-              type: 'object',
-              properties: {
-                street:  { type: 'string' },
-                city:    { type: 'string' },
-                zip:     { type: 'string' },
-                country: { type: 'string' },
-              },
-            },
+            shippingAddress: { $ref: '#/components/schemas/ShippingAddress' },
+          },
+        },
+        ShippingAddress: {
+          type: 'object',
+          properties: {
+            street:  { type: 'string', example: '123 Main St' },
+            city:    { type: 'string', example: 'Manila' },
+            zip:     { type: 'string', example: '1000' },
+            country: { type: 'string', example: 'PH' },
           },
         },
         Error: {

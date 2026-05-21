@@ -5,11 +5,12 @@
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "baseUrl", "value": "http://localhost:3000" },
-    { "key": "token",   "value": "" },
-    { "key": "userId",  "value": "" },
-    { "key": "itemId",  "value": "" },
-    { "key": "orderId", "value": "" }
+    { "key": "baseUrl",        "value": "http://localhost:3000" },
+    { "key": "token",          "value": "" },
+    { "key": "tokenExpiresIn", "value": "" },
+    { "key": "userId",         "value": "" },
+    { "key": "itemId",         "value": "" },
+    { "key": "orderId",        "value": "" }
   ],
   "item": [
     {
@@ -23,7 +24,8 @@
               "script": {
                 "exec": [
                   "const res = pm.response.json();",
-                  "if (res.token) pm.collectionVariables.set('token', res.token);"
+                  "if (res.token) pm.collectionVariables.set('token', res.token);",
+                  "if (res.expiresIn) pm.collectionVariables.set('tokenExpiresIn', res.expiresIn);"
                 ]
               }
             }
@@ -46,7 +48,8 @@
               "script": {
                 "exec": [
                   "const res = pm.response.json();",
-                  "if (res.token) pm.collectionVariables.set('token', res.token);"
+                  "if (res.token) pm.collectionVariables.set('token', res.token);",
+                  "if (res.expiresIn) pm.collectionVariables.set('tokenExpiresIn', res.expiresIn);"
                 ]
               }
             }
@@ -233,7 +236,7 @@
       "name": "Orders",
       "item": [
         {
-          "name": "Checkout (Cart → Order)",
+          "name": "Checkout — Card (address optional)",
           "event": [
             {
               "listen": "test",
@@ -254,7 +257,62 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"paymentMethod\": \"card\",\n  \"shippingAddress\": {\n    \"street\": \"1 Main St\",\n    \"city\": \"New York\",\n    \"zip\": \"10001\",\n    \"country\": \"US\"\n  }\n}"
+              "raw": "{\n  \"paymentMethod\": \"card\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Checkout — COD (address required, happy path)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "const res = pm.response.json();",
+                  "if (res.id) pm.collectionVariables.set('orderId', res.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/orders",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentMethod\": \"cod\",\n  \"shippingAddress\": {\n    \"street\": \"123 Main St\",\n    \"city\": \"Manila\",\n    \"zip\": \"1000\",\n    \"country\": \"PH\"\n  }\n}"
+            }
+          }
+        },
+        {
+          "name": "Checkout — COD missing address (expect 400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error mentions shippingAddress', () => {",
+                  "  pm.expect(pm.response.json().message).to.include('shippingAddress');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/orders",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentMethod\": \"cod\"\n}"
             }
           }
         },

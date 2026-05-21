@@ -34,7 +34,8 @@ const { User }  = require('../models');
  *             schema:
  *               type: object
  *               properties:
- *                 token: { type: string }
+ *                 token:     { type: string }
+ *                 expiresIn: { type: string, example: '7d' }
  *       400:
  *         description: Email already in use
  */
@@ -48,7 +49,7 @@ router.post('/register', async (req, res) => {
     const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, {
       expiresIn: process.env.JWT_EXPIRES_IN,
     });
-    res.status(201).json({ token });
+    res.status(201).json({ token, expiresIn: process.env.JWT_EXPIRES_IN });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -78,7 +79,8 @@ router.post('/register', async (req, res) => {
  *             schema:
  *               type: object
  *               properties:
- *                 token: { type: string }
+ *                 token:     { type: string }
+ *                 expiresIn: { type: string, example: '7d' }
  *       401:
  *         description: Invalid credentials
  */
@@ -92,7 +94,7 @@ router.post('/login', async (req, res) => {
     const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, {
       expiresIn: process.env.JWT_EXPIRES_IN,
     });
-    res.json({ token });
+    res.json({ token, expiresIn: process.env.JWT_EXPIRES_IN });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
